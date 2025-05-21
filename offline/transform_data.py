@@ -48,8 +48,8 @@ results = {
 }
 
 # Load image generation prompts
-path_to_image_gen_prompts = "metadata_finetuned/image_mapping.json"
-image_dir = "images_finetuned"
+path_to_image_gen_prompts = "metadata/image_mapping.json"
+image_dir = "images"
 with open(path_to_image_gen_prompts, 'r') as file:
     image_gen_prompts = json.load(file)
 
@@ -305,12 +305,7 @@ def upload_dataset(
         'weighted_results_image1_preference': Value('float'),
         'weighted_results_image2_preference': Value('float'),
         'detailed_results_preference': Value('string'),
-        # 'weighted_results_image1_coherence': Value('float'),
-        # 'weighted_results_image2_coherence': Value('float'),
-        # 'detailed_results_coherence': Value('string'),
-        # 'weighted_results_image1_alignment': Value('float'),
-        # 'weighted_results_image2_alignment': Value('float'),
-        # 'detailed_results_alignment': Value('string')
+   
     })
 
     # Initialize HF API and create repository
@@ -367,7 +362,7 @@ def upload_dataset(
 if __name__ == "__main__":
     upload_dataset(
         df=final_df,
-        repo_id="MarvinKoch/offlinedata3000promptsfinetuned",
+        repo_id="username/dataset",
         token=HF_TOKEN,
         batch_size=1,
         test_mode=False

@@ -8,8 +8,8 @@ from PIL import Image
 from rapidata import RapidataClient
 
 # Define storage directories
-IMAGE_DIR = "images_finetuned"
-METADATA_DIR = "metadata_finetuned"
+IMAGE_DIR = "images"
+METADATA_DIR = "metadata"
 ORDER_RESULTS_DIR = "order_results"
 
 os.makedirs(ORDER_RESULTS_DIR, exist_ok=True)
@@ -41,7 +41,7 @@ def create_rapidata_order(rapi: RapidataClient):
     # print(validation_set)
 
     order = rapi.order.create_compare_order(
-        name="3000 Logos offline training finetuned model",
+        name="3000 Logos offline training",
         instruction="Which logo do you prefer given the description?",
         contexts=prompts,  # Pass prompts as context
         datapoints=datapoints,

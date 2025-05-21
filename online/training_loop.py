@@ -21,7 +21,7 @@ BASE_ORDER_RESULTS_DIR = "order_results"
 # IMPORTANT: Set your HF Token and Repo Name
 # Load from environment variable if possible
 HF_TOKEN = os.getenv("HF_TOKEN")
-HF_REPO_BASE_NAME = "MarvinKoch/onlinetest" # CHANGE THIS default or set env var
+HF_REPO_BASE_NAME = "username/onlinetest" # CHANGE THIS default or set env var
 RAPIDATA_VALIDATION_SET_ID = "67f002c7075c672e0bfe36e6" # Optional: Name of your validation set on Rapidata
 
 

@@ -9,8 +9,8 @@ from PIL import Image
 # from rapidata import RapidataClient # Removed as it wasn't used in the provided snippet
 
 # Define storage directories
-IMAGE_DIR = "images_finetuned"
-METADATA_DIR = "metadata_finetuned"
+IMAGE_DIR = "images"
+METADATA_DIR = "metadata"
 # ORDER_RESULTS_DIR = "order_results" # Removed as it wasn't used
 
 os.makedirs(IMAGE_DIR, exist_ok=True)
