@@ -19,7 +19,6 @@ ETH Data Science Lab Spring 2025, in collaboration with Rapidata.ai.
 ## Run
 **Offline Training (Dataset generation and model training)**  
     ```
-
    bash offline/train_offline.sh
     ```
 
