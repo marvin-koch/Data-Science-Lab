@@ -1,0 +1,2 @@
+Validation: Please select the image that clearly shows a **red** car.
+Validation: Choose the image depicting a simple **blue square**.
