@@ -459,4 +459,3 @@ def transform_and_upload_for_iteration(
         import traceback
         traceback.print_exc() # Print detailed traceback for debugging
         return None
-

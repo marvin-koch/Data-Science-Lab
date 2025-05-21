@@ -9,9 +9,10 @@ from run_orders import create_rapidata_order_for_iteration, save_order_results_f
 from transform_data import transform_and_upload_for_iteration
 from types import SimpleNamespace
 from LORA.train_diffusion_dpo_sdxl import main
+import shutil
 
 # --- Configuration ---
-NUM_ITERATIONS = 3  # Total number of feedback loops to run
+NUM_ITERATIONS = 5  # Total number of feedback loops to run
 BASE_MODEL_NAME = "stabilityai/stable-diffusion-xl-base-1.0" # Initial model
 FINETUNED_MODEL_DIR = "models" # Directory to save fine-tuned models
 BASE_IMAGE_DIR = "images"
@@ -63,19 +64,19 @@ def fine_tune_model(base_model_path: str, feedback_dataset_repo_id: str, iterati
     mixed_precision="fp16", # Default was None
     dataset_name=feedback_dataset_repo_id, # Default was None, but check raises ValueError if None
     cache_dir="/home/jupyter/marvin/DS_Lab/DiffusionDPO/datasets/rapidata", # Default was None
-    train_batch_size=2, # Default was 4
+    train_batch_size=16, # Default was 4
     dataloader_num_workers=2, # Default was 0
-    gradient_accumulation_steps=2, # Default was 1
+    gradient_accumulation_steps=1, # Default was 1
     gradient_checkpointing=True, # Default was False
     use_8bit_adam=True, # Default was False
     rank=8, # Default was 4
     learning_rate=1e-5, # Default was 5e-4
     lr_scheduler="constant", # Default was "constant" (no change here, but listed for completeness)
     lr_warmup_steps=0, # Default was 500
-    max_train_steps=4, # Default was None
-    checkpointing_steps=2, # Default was 500
+    max_train_steps=1000, # Default was None
+    checkpointing_steps=400, # Default was 500
     run_validation=True, # Default was False
-    validation_steps=2, # Default was 200
+    validation_steps=400, # Default was 200
     seed=0, # Default was None
     report_to="wandb", # Default was "tensorboard"
     dataset_split_name="train", # Default was "validation"
@@ -88,7 +89,7 @@ def fine_tune_model(base_model_path: str, feedback_dataset_repo_id: str, iterati
     vae_encode_batch_size=8,
     no_hflip=False, # action="store_true" defaults to False
     random_crop=False, # action="store_true" defaults to False
-    num_train_epochs=1,
+    num_train_epochs=10,
     checkpoints_total_limit=None,
     resume_from_checkpoint=None,
     beta_dpo=5000,
@@ -110,26 +111,10 @@ def fine_tune_model(base_model_path: str, feedback_dataset_repo_id: str, iterati
     enable_xformers_memory_efficient_attention=True, # action="store_true" defaults to False
     is_turbo=False, # action="store_true" defaults to False
     tracker_name="diffusion-dpo-lora-sdxl", # Default was "diffusion-dpo-lora-sdxl"
+    iter_num=iteration_num
 )
     main(args)
-    # ** REPLACE THIS SECTION WITH YOUR ACTUAL FINE-TUNING CODE **
-    # Example steps you would need:
-    # 1. Load the feedback dataset:
-    #    from datasets import load_dataset
-    #    feedback_dataset = load_dataset(feedback_dataset_repo_id, token=HF_TOKEN) # Or use cached path if downloaded
-    # 2. Preprocess the dataset for your chosen training method (e.g., DPO, PPO, reward modeling).
-    #    This heavily depends on the library (trl, custom script) and strategy.
-    #    You might need to convert preference scores into rewards or chosen/rejected pairs.
-    # 3. Configure and run the training script (e.g., using accelerate, diffusers.train_*, trl.DPOTrainer).
-    #    Pass `base_model_path` as the starting point and `new_model_output_path` as the save location.
-    #    Example using hypothetical DPOTrainer:
-    #    # trainer = DPOTrainer(model=base_model_path, ...)
-    #    # trainer.train()
-    #    # trainer.save_model(new_model_output_path)
-    # 4. Ensure the fine-tuned model (pipeline components) is saved correctly in `new_model_output_path`.
 
-    # ** END OF PLACEHOLDER **
-    # new_model_output_path = new_model_output_path
     print(f"Fine-tuning complete. 'Model' saved to: {new_model_output_path}")
 
 
@@ -170,7 +155,7 @@ def run_training_loop():
 
     lora_model_path = None  # Start with the base model
 
-    for i in range(NUM_ITERATIONS):
+    for i in range(0, NUM_ITERATIONS):
         print(f"\n================ Iteration {i+1}/{NUM_ITERATIONS} ================")
         iteration_start_time = datetime.now()
 
@@ -206,8 +191,8 @@ def run_training_loop():
                 base_order_results_dir=BASE_ORDER_RESULTS_DIR
             )
             if not order_results_file:
-                 print(f"❌ Failed to get/save Rapidata results for iteration {i}. Stopping loop.")
-                 break
+                print(f"❌ Failed to get/save Rapidata results for iteration {i}. Stopping loop.")
+                break
             torch.cuda.empty_cache()
             # 4. Transform Data and Upload to Hugging Face Hub
             feedback_repo_id = transform_and_upload_for_iteration(
@@ -218,6 +203,10 @@ def run_training_loop():
                 hf_token=HF_TOKEN,
                 base_image_dir=BASE_IMAGE_DIR
             )
+            if os.path.isdir(BASE_IMAGE_DIR):
+                shutil.rmtree(BASE_IMAGE_DIR)
+
+                      
             if not feedback_repo_id:
                  print(f"❌ Failed to transform or upload data for iteration {i}. Stopping loop.")
                  break
@@ -232,7 +221,8 @@ def run_training_loop():
             )
             torch.cuda.empty_cache()
             # Update the model path for the next iteration
-            lora_model_path = new_model_path + "/pytorch_lora_weights.safetensors"
+            lora_model_path = new_model_path #+ "/pytorch_lora_weights.safetensors"
+            
             print(f"✅ Iteration {i} complete. Next iteration will use model {BASE_MODEL_NAME} with LoRA weights: {lora_model_path}")
 
         except Exception as e:
@@ -254,12 +244,5 @@ if __name__ == "__main__":
     start_time = datetime.now()
     run_training_loop()
     
-    # fine_tune_model(
-    #             base_model_path=BASE_MODEL_NAME,
-    #             feedback_dataset_repo_id="MarvinKoch/onlinetest-iter-0",
-    #             iteration_num=1,
-    #             output_dir_base=FINETUNED_MODEL_DIR,
-    #             lora_model_path = "models/sdxl_LORA_finetuned_iter_0/checkpoint-2/pytorch_lora_weights.safetensors"
-    #         )
     end_time = datetime.now()
     print(f"\nTotal execution time: {end_time - start_time}")

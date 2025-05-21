@@ -8,160 +8,7 @@ from PIL import Image
 # Keep rapidata import if needed elsewhere, but not directly used here
 # from rapidata import RapidataClient
 
-# Removed redundant directory definitions
 
-# def generate_images_for_iteration(
-#     model_path_or_name: str, # This should always be the BASE model ID (e.g., stabilityai/...)
-#     lora_path: str = None,    # Path to the directory containing LoRA weights
-#     prompts: list = None,     # Made prompts optional for flexibility, but required by loop
-#     iteration_num: int = 0, # Default to 0 if not specified
-#     base_image_dir: str = "images",
-#     base_metadata_dir: str = "metadata"
-# ) -> str:
-#     """
-#     Generates images for a list of prompts using a specified base model,
-#     optionally applying LoRA weights, saves them in iteration-specific folders,
-#     and creates metadata.
-
-#     Args:
-#         model_path_or_name: HF model name/path of the BASE diffusion model.
-#         lora_path: Optional path to the directory containing LoRA weights
-#                    (e.g., 'models_lora/sdxl_dpo_lora_iter_0').
-#         prompts: A list of strings (prompts).
-#         iteration_num: The current training loop iteration number.
-#         base_image_dir: Base directory to store images.
-#         base_metadata_dir: Base directory to store metadata.
-
-#     Returns:
-#         Path to the generated image mapping JSON file for this iteration.
-#         Returns None if generation fails or no prompts provided.
-#     """
-#     if prompts is None:
-#         print("❌ No prompts provided to generate_images_for_iteration.")
-#         return None
-
-#     print(f"\n--- Generating Images: Iteration {iteration_num} ---")
-#     print(f"Using base model: {model_path_or_name}")
-#     if lora_path:
-#         print(f"Attempting to apply LoRA weights from: {lora_path}")
-#     else:
-#         print("No LoRA weights specified, using base model only.")
-
-#     # Create iteration-specific directories
-#     iter_image_dir = os.path.join(base_image_dir, f"iter_{iteration_num}")
-#     iter_metadata_dir = os.path.join(base_metadata_dir, f"iter_{iteration_num}")
-#     os.makedirs(iter_image_dir, exist_ok=True)
-#     os.makedirs(iter_metadata_dir, exist_ok=True)
-
-#     mapping_file = os.path.join(iter_metadata_dir, "image_mapping.json")
-#     prompts_csv = os.path.join(iter_metadata_dir, "prompts.csv") # Keep saving prompts per iteration for reference
-
-#     pipe = None
-#     try:
-#         # Initialize SDXL pipeline WITH THE BASE MODEL
-#         print(f"Loading base model pipeline: {model_path_or_name}")
-#         pipe = StableDiffusionXLPipeline.from_pretrained(
-#             model_path_or_name,
-#             torch_dtype=torch.float16,
-#             use_safetensors=True,
-#             variant="fp16" # Common variant for base model
-#         ).to("cuda")
-#         print("Base pipeline loaded.")
-
-#         # --- Apply LoRA weights if provided ---
-#         if lora_path and os.path.isdir(lora_path):
-#             # Check specifically for the common LoRA weight file name
-#             lora_weights_file = os.path.join(lora_path, "pytorch_lora_weights.safetensors")
-#             # Or check for .bin if that's used by the training script
-#             # lora_weights_file_bin = os.path.join(lora_path, "pytorch_lora_weights.bin")
-
-#             if os.path.exists(lora_weights_file):
-#                  print(f"  Found LoRA weights file: {lora_weights_file}")
-#                  print(f"  Applying LoRA weights to the pipeline...")
-#                  # load_lora_weights expects the *directory* containing the weights file
-#                  pipe.load_lora_weights(lora_path)
-#                  # Optional: Fuse LoRA for potentially faster inference (uses more memory)
-#                  # pipe.fuse_lora()
-#                  # print("  Fused LoRA weights.")
-#                  print("  LoRA weights applied successfully.")
-#             # elif os.path.exists(lora_weights_file_bin):
-#             #     print(f"  Found LoRA weights file: {lora_weights_file_bin}")
-#             #     pipe.load_lora_weights(lora_path) # Pass directory
-#             #     print("  LoRA weights applied successfully.")
-#             else:
-#                  print(f"  ⚠️ Warning: LoRA directory '{lora_path}' exists, but no weights file "
-#                        f" (e.g., 'pytorch_lora_weights.safetensors') found inside. Using base model only.")
-#         elif lora_path:
-#             print(f"  ⚠️ Warning: Specified LoRA path '{lora_path}' is not a valid directory. Using base model only.")
-#         # --- End Apply LoRA ---
-
-
-#         image_mapping = {"data": []}
-#         global_image_counter = 0 # Use a counter that increments across prompts
-
-#         with open(prompts_csv, "w", newline="") as csvfile:
-#             writer = csv.writer(csvfile)
-#             writer.writerow(["Prompt"])  # CSV header
-
-#             for i, prompt in enumerate(prompts):
-#                 print(f"  Generating images for prompt {i+1}/{len(prompts)}: '{prompt[:50]}...'")
-#                 # Generate 2 images per prompt for comparison
-#                 image_filenames = []
-#                 image_paths = []
-#                 for j in range(2): # Generate two images
-#                     img_filename = f"iter{iteration_num}_prompt{i}_img{j}_{global_image_counter:04d}.png"
-#                     img_path = os.path.join(iter_image_dir, img_filename)
-#                     image_filenames.append(img_filename)
-#                     image_paths.append(img_path)
-#                     global_image_counter += 1
-
-#                 # Generate images sequentially
-#                 # Use try-except specifically around image generation
-#                 try:
-#                     # Adjust inference steps as needed
-#                     img1 = pipe(prompt, num_inference_steps=30, guidance_scale=7.0).images[0]
-#                     img1.save(image_paths[0])
-
-#                     # Generate a second potentially different image (new seed implicitly used by pipeline)
-#                     img2 = pipe(prompt, num_inference_steps=30, guidance_scale=7.0).images[0]
-#                     img2.save(image_paths[1])
-
-#                     # Store mapping info
-#                     image_mapping["data"].append({
-#                         "prompt": prompt,
-#                         # Store only filenames relative to the base_image_dir/iter_n structure
-#                         "images": [os.path.join(f"iter_{iteration_num}", fname) for fname in image_filenames]
-#                     })
-
-#                     # Write prompt to CSV
-#                     writer.writerow([prompt])
-#                     print(f"    ✅ Images saved: {image_filenames}")
-
-#                 except Exception as e_gen:
-#                     print(f"    ❌ Error generating images for prompt '{prompt}': {e_gen}")
-#                     # Decide how to handle errors: skip prompt, stop loop, etc.
-#                     # For now, just print and continue to next prompt
-#                     # Remove potentially partially saved files for this prompt? Maybe not necessary.
-#                     continue # Skip adding this prompt to the mapping
-
-#         # Save mapping JSON (only includes successfully generated pairs)
-#         with open(mapping_file, "w") as f:
-#             json.dump(image_mapping, f, indent=4)
-
-#         print(f"\n🟢 Image generation complete for iteration {iteration_num}.")
-#         print(f"🟢 Image mapping saved at {mapping_file} (contains {len(image_mapping['data'])} entries)")
-#         print(f"🟢 Prompts reference saved at {prompts_csv}")
-#         return mapping_file
-
-#     except Exception as e_outer:
-#          print(f"❌ An critical error occurred during image generation setup or pipeline loading for iteration {iteration_num}: {e_outer}")
-#          return None # Indicate failure
-#     finally:
-#         # Clean up GPU memory
-#         del pipe
-#         if torch.cuda.is_available():
-#             torch.cuda.empty_cache()
-#             print("Cleared GPU cache after generation.")
 
 
 import os
@@ -183,9 +30,9 @@ def generate_images_for_iteration(
     iteration_num: int = 0,
     base_image_dir: str = "images",
     base_metadata_dir: str = "metadata",
-    batch_size: int = 16,                   # Added: Batch size for generation
+    batch_size: int = 32,                   # Added: Batch size for generation
     num_inference_steps: int = 30,       # Added: Inference steps parameter
-    guidance_scale: float = 7.0,         # Added: Guidance scale parameter
+    guidance_scale: float = 7.5,         # Added: Guidance scale parameter
     num_images_per_prompt: int = 2,      # Added: Number of images per prompt
     vae_path: Optional[str] = "madebyollin/sdxl-vae-fp16-fix", # Added: Optional separate VAE path
     device: str = "cuda" if torch.cuda.is_available() else "cpu", # Added: Device selection
@@ -242,6 +89,8 @@ def generate_images_for_iteration(
     mapping_file = os.path.join(iter_metadata_dir, "image_mapping.json")
     prompts_csv = os.path.join(iter_metadata_dir, "prompts.csv")
 
+
+    
     pipe = None
     vae = None
     try:
@@ -302,6 +151,9 @@ def generate_images_for_iteration(
             else:
                  print(f"  ⚠️ Warning: LoRA directory '{lora_path}' exists, but no compatible weights file "
                        f"(e.g., 'pytorch_lora_weights.safetensors') found inside. Using base model only.")
+        elif lora_path == "artificialguybr/LogoRedmond-LogoLoraForSDXL-V2":
+            pipe.load_lora_weights("artificialguybr/LogoRedmond-LogoLoraForSDXL-V2")
+
         elif lora_path:
             print(f"  ⚠️ Warning: Specified LoRA path '{lora_path}' is not a valid directory. Using base model only.")
         # --- End Apply LoRA ---

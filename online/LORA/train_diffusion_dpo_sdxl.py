@@ -65,7 +65,7 @@ logger = get_logger(__name__)
 
 global_step = 0
 
-VALIDATION_IMG_SAVE_PATH = os.path.join(os.getcwd(), "valid_images/")
+VALIDATION_IMG_SAVE_PATH = os.path.join(os.getcwd(), "valid_images_finetuned/")
 
 VALIDATION_PROMPTS_SHORT = [
     "futuristic logo for a AI lab, using red and black colors, icon inside shape, with a spiral icon, in a embossed style.",
@@ -123,12 +123,12 @@ VALIDATION_PROMPTS = [
     "playful logo for a yoga studio, using lime green and charcoal colors, simple shape, with a rocket icon, in a neon lights style. Single centered logo on a plain background. No duplicates or mockups."
 ]
 
-VALIDATION_BATCH_SIZE = 2  # Or whatever your batch limit is
+VALIDATION_BATCH_SIZE = 4  # Or whatever your batch limit is
 
 
 TRAINING_ADAPTER = "training adapter"
 REFERENCE_ADAPTER = "reference adapter"
-VALIDATION_IMG_SAVE_PATH = os.path.join(os.getcwd(), "valid_images/")
+VALIDATION_IMG_SAVE_PATH = os.path.join(os.getcwd(), "valid_images_finetuned/")
 
 def import_model_class_from_model_name_or_path(
     pretrained_model_name_or_path: str, revision: str, subfolder: str = "text_encoder"
@@ -203,7 +203,7 @@ def log_validation(args, unet, vae, accelerator, weight_dtype, epoch, global_ste
  
     num_batches = ceil(len(VALIDATION_PROMPTS) / VALIDATION_BATCH_SIZE)
 
-    step_save_dir = os.path.join(VALIDATION_IMG_SAVE_PATH, f"step_{global_step}/")
+    step_save_dir = os.path.join(VALIDATION_IMG_SAVE_PATH, f"iter_{args.iter_num}", f"step_{global_step}/")
     os.makedirs(step_save_dir, exist_ok=True)
     print(f"Saving images to {step_save_dir}")
 
@@ -231,7 +231,7 @@ def log_validation(args, unet, vae, accelerator, weight_dtype, epoch, global_ste
             images.append(image)
             image_idx += 1
 
-    metrics = run_order(os.path.join(VALIDATION_IMG_SAVE_PATH,f"step_{global_step}/"),VALIDATION_IMG_SAVE_PATH,VALIDATION_PROMPTS_SHORT,global_step)
+    metrics = run_order(os.path.join(VALIDATION_IMG_SAVE_PATH, f"iter_{args.iter_num}", f"step_{global_step}/"),VALIDATION_IMG_SAVE_PATH,VALIDATION_PROMPTS_SHORT,global_step)
     accelerator.log(metrics, step=global_step)
     # accelerator.log(logs, step=global_step)
     tracker_key = "test" if is_final_validation else "validation"
@@ -352,6 +352,8 @@ def parse_args(input_args=None):
         help="The directory where the downloaded models and datasets will be stored.",
     )
     parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
+    parser.add_argument("--iter_num", type=int, default=0)
+
     parser.add_argument(
         "--resolution",
         type=int,
@@ -849,8 +851,12 @@ def main(args):
             #     adapter_name="reference",
             #     weight_name="pytorch_lora_weights.safetensors", # Adjust if filename differs
             # )
+            weight_name="pytorch_lora_weights.safetensors"
+            if args.reference_lora_model_path == "artificialguybr/LogoRedmond-LogoLoraForSDXL-V2":
+                weight_name="LogoRedmondV2-Logo-LogoRedmAF.safetensors"
+                
             lora_state_dict, network_alphas = StableDiffusionXLLoraLoaderMixin.lora_state_dict(
-                args.reference_lora_model_path, weight_name="pytorch_lora_weights.safetensors"
+                args.reference_lora_model_path, weight_name=weight_name,  unet_config=unet.config 
             )
             unet.add_adapter(unet_lora_config, "def")
 
@@ -1020,7 +1026,7 @@ def main(args):
         elif row['weighted_results_image1_preference'] < row['weighted_results_image2_preference']:
             return 0  # Label 1 for image2
         else:
-            return 0.5  # Label -1 for a tie (optional)
+            return 1  # Label -1 for a tie (optional)
         
     # train_dataset = train_dataset.map(lambda x: {'label_0': determine_label(x), 'caption': x['prompt'],  # Rename "prompt" -> "caption"
     #      'jpg_0': x['image1'], 'jpg_1': x['image2']}, remove_columns=['votes_image1', 'votes_image2', 'prompt', 'image1', 'image2'], num_proc=2)

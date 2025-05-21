@@ -8,8 +8,6 @@ from datetime import datetime
 from rapidata import RapidataClient
 
 
-# for now hard-coded here
-NUM_DATAPOINTS = 2
 
 
 
@@ -82,7 +80,7 @@ def create_rapidata_order_for_iteration(
             instruction="Which logo do you prefer given the description?", # Customize instruction
             contexts=prompts,
             datapoints=datapoints,
-            responses_per_datapoint=NUM_DATAPOINTS, # Adjust as needed (e.g., 3-5 for cost/speed)
+            responses_per_datapoint=9, # Adjust as needed (e.g., 3-5 for cost/speed)
             validation_set_id=validation_set_id # Pass the ID if found
         ).run() # Use .run() to immediately start the order
         print(f"🟢 Order created and started successfully. Order ID: {order.order_id}")
@@ -132,49 +130,3 @@ def save_order_results_for_iteration(
         print(f"❌ Error getting or saving results for order {order.order_id}: {e}")
         return None # Return None if results couldn't be saved
 
-
-# Keep this block if you want to run this file standalone for testing
-""""
-if __name__ == "__main__":
-    # Example usage for standalone testing
-    # Assumes images and metadata for iter_0 exist from running generate_images.py standalone
-    TEST_ITERATION = 0
-    TEST_MAPPING_FILE = os.path.join("metadata", f"iter_{TEST_ITERATION}", "image_mapping.json")
-    TEST_IMAGE_DIR = "images"
-    TEST_RESULTS_DIR = "order_results"
-    # Optional: Set a validation set name you created on Rapidata
-    VALIDATION_SET = "Example Compare Validation Set" # Or None
-
-    if os.path.exists(TEST_MAPPING_FILE):
-        try:
-            print("--- Running Standalone Order Test ---")
-            rapi_client = RapidataClient() # Assumes API key is configured via env var or ~/.rapidata
-            test_order = create_rapidata_order_for_iteration(
-                rapi=rapi_client,
-                mapping_file_path=TEST_MAPPING_FILE,
-                iteration_num=TEST_ITERATION,
-                base_image_dir=TEST_IMAGE_DIR,
-                validation_set_name=VALIDATION_SET
-            )
-
-            if test_order:
-                results_file = save_order_results_for_iteration(
-                    order=test_order,
-                    iteration_num=TEST_ITERATION,
-                    base_order_results_dir=TEST_RESULTS_DIR
-                )
-                if results_file:
-                    print(f"\n✅ Standalone test completed. Results saved to: {results_file}")
-                else:
-                    print("\n❌ Standalone test completed, but failed to save results.")
-            else:
-                print("\n❌ Standalone test failed during order creation.")
-
-        except Exception as e:
-            print(f"An error occurred during standalone test: {e}")
-    else:
-        print(f"Test mapping file not found: {TEST_MAPPING_FILE}")
-        print("Please run generate_images.py first to create test data.")
-
-# --- END OF FILE run_orders.py ---
-# """

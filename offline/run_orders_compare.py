@@ -42,7 +42,7 @@ def create_rapidata_order(rapi: RapidataClient):
     # print(validation_set)
 
     order = rapi.order.create_compare_order(
-        name="3000 Prompts (10000 gradient steps) offline comparison",
+        name="3000 Prompts offline comparison",
         instruction="Which logo fits the description better?",
         contexts=prompts,  # Pass prompts as context
         datapoints=datapoints,
